@@ -1,6 +1,6 @@
 extern crate clap;
 
-use clap::{arg, Arg, Command};
+use clap::{arg, Arg};
 
 pub const DEFAULT_CONF: &str = "./conf.yaml";
 pub const DEFAULT_IP_FILE: &str = "./ip.txt";
@@ -14,8 +14,31 @@ fn register_args() -> Vec<Arg> {
     ]
 }
 
-pub fn new_cmd() -> Command {
-    Command::new("cf-proxy-test")
+pub fn new_cmd() -> clap::Command {
+    clap::Command::new("cf-proxy-test")
         .about("用于测试 Cloudflare 反代IP，仅供学习或者娱乐使用。")
         .args(register_args())
+}
+
+pub struct Command {
+    pub conf_path: String,
+    pub ip_src: String,
+}
+
+impl Command {
+    pub fn init() -> Self {
+        let cmd = new_cmd().get_matches();
+
+        let mut conf_path = DEFAULT_CONF.to_string();
+        if let Some(p) = cmd.get_one::<String>("config") {
+            conf_path = p.to_owned();
+        }
+
+        let mut ip_src = DEFAULT_IP_FILE.to_string();
+        if let Some(p) = cmd.get_one::<String>("src") {
+            ip_src = p.to_owned();
+        }
+
+        Self { conf_path, ip_src }
+    }
 }

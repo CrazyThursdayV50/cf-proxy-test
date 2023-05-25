@@ -22,6 +22,7 @@ pub struct ConnConfig {
     pub method: String,
     pub timeout: u64,
     pub http: ConnHttpConfig,
+    pub top: usize,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -32,4 +33,5 @@ pub struct ConnHttpConfig {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct DownloadConfig {
     pub timeout: u64,
+    pub top: usize,
 }
