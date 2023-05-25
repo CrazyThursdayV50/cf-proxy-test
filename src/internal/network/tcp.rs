@@ -1,10 +1,9 @@
 extern crate futures;
 extern crate tokio;
 
-use super::api::ConnectTestStats;
+use crate::internal::client::conn::{ConnTest, ConnectTestStats};
+use crate::internal::client::def::ServerAddress;
 
-use super::api::ProxyTest;
-use super::api::ServerAddress;
 use async_trait::async_trait;
 use std::error::Error;
 use std::{net::SocketAddr, time::Duration};
@@ -13,20 +12,25 @@ use tokio::{net::TcpStream, time};
 pub struct TcpClient {
     addrs: Vec<ServerAddress>,
     timeout: Duration,
+    top: usize,
 }
 
 impl TcpClient {
-    pub fn build(src: Vec<SocketAddr>, timeout: Duration) -> Self {
+    pub fn build(src: Vec<SocketAddr>, timeout: Duration, top: usize) -> Self {
         let mut addrs = Vec::new();
         for addr in src {
             addrs.push(ServerAddress::Socket(addr));
         }
-        Self { addrs, timeout }
+        Self {
+            addrs,
+            timeout,
+            top,
+        }
     }
 }
 
 #[async_trait]
-impl ProxyTest for TcpClient {
+impl ConnTest for TcpClient {
     async fn connect(
         &self,
         dst: ServerAddress,
@@ -71,5 +75,9 @@ impl ProxyTest for TcpClient {
 
     fn get_timeout(&self) -> Duration {
         self.timeout
+    }
+
+    fn get_top(&self) -> usize {
+        self.top
     }
 }

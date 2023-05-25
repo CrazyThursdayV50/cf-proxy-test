@@ -1,4 +1,4 @@
-use crate::internal::network::api::ProxyTest;
+use crate::internal::client::conn::ConnTest;
 use crate::internal::network::http::HttpClient;
 use crate::internal::network::tcp::TcpClient;
 
@@ -44,7 +44,7 @@ impl Config {
         (conf, ips)
     }
 
-    pub fn create_proxy_test_client(&self, ips: Vec<IpAddr>) -> Box<dyn ProxyTest> {
+    pub fn create_conn_test_client(&self, ips: Vec<IpAddr>) -> Box<dyn ConnTest> {
         let mut socket_addrs = Vec::new();
         let timeout = Duration::from_secs(self.conn.timeout);
         for ip in ips {
@@ -57,9 +57,10 @@ impl Config {
                     self.url.as_str().parse().unwrap(),
                     socket_addrs,
                     timeout,
+                    self.conn.top,
                 ));
             }
-            "tcp" => return Box::new(TcpClient::build(socket_addrs, timeout)),
+            "tcp" => return Box::new(TcpClient::build(socket_addrs, timeout, self.conn.top)),
 
             others => panic!("invalid method: {others}"),
         }

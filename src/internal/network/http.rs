@@ -1,11 +1,6 @@
 extern crate hyper;
 extern crate reqwest;
 
-use super::api::ConnectTestStats;
-use super::api::DownloadTestStats;
-use super::api::ProxyTest;
-use super::api::ServerAddress;
-use super::api::Speed;
 use async_trait::async_trait;
 use reqwest::redirect::Policy;
 use reqwest::Method;
@@ -19,14 +14,22 @@ use std::time::Duration;
 use std::time::SystemTime;
 use tokio::runtime::Runtime;
 
+use crate::internal::client::conn::ConnTest;
+use crate::internal::client::conn::ConnectTestStats;
+use crate::internal::client::def::ServerAddress;
+use crate::internal::client::download::DownloadTest;
+use crate::internal::client::download::DownloadTestStats;
+use crate::internal::client::download::Speed;
+
 pub struct HttpClient {
     vias: Vec<ServerAddress>,
     remote: ServerAddress,
     timeout: Duration,
+    top: usize,
 }
 
 impl HttpClient {
-    pub fn build(url: Url, addrs: Vec<SocketAddr>, timeout: Duration) -> Self {
+    pub fn build(url: Url, addrs: Vec<SocketAddr>, timeout: Duration, top: usize) -> Self {
         let mut vias = Vec::new();
         for addr in addrs {
             vias.push(ServerAddress::Socket(addr))
@@ -37,12 +40,13 @@ impl HttpClient {
             vias,
             remote,
             timeout,
+            top,
         }
     }
 }
 
 #[async_trait]
-impl ProxyTest for HttpClient {
+impl ConnTest for HttpClient {
     async fn connect(
         &self,
         remote: ServerAddress,
@@ -91,27 +95,16 @@ impl ProxyTest for HttpClient {
         let cost = now.elapsed().unwrap();
 
         match result {
-            Ok(resp) => {
-                // println!(
-                //     "connect to {} via {} repsonse: {:?} cost {:?}",
-                //     self.url, proxy_host, resp, cost
-                // );
-
-                match resp.status() {
-                    StatusCode::OK | StatusCode::MOVED_PERMANENTLY | StatusCode::FOUND => {
-                        println!("connect via {:?} response: {:?}", proxy_host, resp);
-                        Ok(ConnectTestStats::new(proxy_host.ip(), cost))
-                    }
-                    _ => Err(Box::new(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("status {}", resp.status()),
-                    ))),
+            Ok(resp) => match resp.status() {
+                StatusCode::OK | StatusCode::MOVED_PERMANENTLY | StatusCode::FOUND => {
+                    Ok(ConnectTestStats::new(proxy_host.ip(), cost))
                 }
-            }
-            Err(e) => {
-                println!("connect to {} via {} failed: {}", remote, proxy_host, e);
-                Err(Box::new(e))
-            }
+                _ => Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("status {}", resp.status()),
+                ))),
+            },
+            Err(e) => Err(Box::new(e)),
         }
     }
 
@@ -127,6 +120,12 @@ impl ProxyTest for HttpClient {
         self.timeout
     }
 
+    fn get_top(&self) -> usize {
+        self.top
+    }
+}
+
+impl DownloadTest for HttpClient {
     fn download_test(&self, ips: Vec<ServerAddress>) -> Vec<DownloadTestStats> {
         let duration = self.get_timeout();
         let mut stats = Vec::new();
@@ -141,7 +140,6 @@ impl ProxyTest for HttpClient {
 
         let future = async {
             for via in ips {
-                println!("download from {} via {:?}", remote.as_str(), via);
                 if stats.len() > 9 {
                     break;
                 }
@@ -149,7 +147,6 @@ impl ProxyTest for HttpClient {
                     ServerAddress::Socket(socket) => socket,
 
                     ServerAddress::URL(url) => {
-                        println!("invalid via address {url}");
                         continue;
                     }
                 };
@@ -180,7 +177,6 @@ impl ProxyTest for HttpClient {
                         let mut total_data = 0;
                         let mut total_cost = Duration::ZERO;
                         loop {
-                            // println!("{} download loop", proxy_host);
                             if total_cost >= duration {
                                 break;
                             }
