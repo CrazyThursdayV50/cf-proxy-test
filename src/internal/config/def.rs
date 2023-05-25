@@ -33,4 +33,5 @@ pub struct ConnHttpConfig {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct DownloadConfig {
     pub timeout: u64,
+    pub top: usize,
 }

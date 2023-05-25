@@ -1,4 +1,5 @@
 use crate::internal::client::conn::ConnTest;
+use crate::internal::client::download::DownloadTest;
 use crate::internal::network::http::HttpClient;
 use crate::internal::network::tcp::TcpClient;
 
@@ -64,6 +65,19 @@ impl Config {
 
             others => panic!("invalid method: {others}"),
         }
+    }
+
+    pub fn create_download_test_client(&self, ips: Vec<IpAddr>) -> Box<dyn DownloadTest> {
+        let mut socket_addrs = Vec::new();
+        let timeout = Duration::from_secs(self.conn.timeout);
+        ips.into_iter()
+            .for_each(|x| socket_addrs.push(SocketAddr::new(x, self.port)));
+        return Box::new(HttpClient::build(
+            self.url.as_str().parse().unwrap(),
+            socket_addrs,
+            timeout,
+            self.download.top,
+        ));
     }
 }
 

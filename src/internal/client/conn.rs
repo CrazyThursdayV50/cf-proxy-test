@@ -2,7 +2,7 @@ use super::def::ServerAddress;
 use async_trait::async_trait;
 use futures::future::join_all;
 use std::error::Error;
-use std::fmt::{write, Display};
+use std::fmt::{ Display};
 use std::{net::IpAddr, time::Duration};
 use tokio::runtime::Runtime;
 
@@ -30,6 +30,7 @@ pub struct ConnectTestResult {
     list: Option<Vec<ConnectTestStats>>,
 }
 
+
 impl Display for ConnectTestResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.list {
@@ -37,7 +38,7 @@ impl Display for ConnectTestResult {
             Some(list) => {
                 let mut content = String::new();
                 content.push_str("测速结果：\n");
-                content.push_str(format!("总有效测速结果：{} 条\n", list.len()).as_str());
+                content.push_str(format!("总有效测速数据 {} 条\n", list.len()).as_str());
                 content.push_str(format!("下面是连接速度最快的 {} 条数据：\n", self.top).as_str());
                 list.iter().enumerate().all(|(i, x)| {
                     if i >= self.top {
@@ -51,6 +52,16 @@ impl Display for ConnectTestResult {
                 write!(f, "{}", content)
             }
         }
+    }
+}
+
+impl ConnectTestResult {
+    pub fn top_ips(&self) -> Vec<IpAddr>{
+        let mut ips = Vec::new();
+        if let Some(list) = &self.list{
+            list.iter().for_each(|x|{ ips.push(x.ip) });
+        }
+        ips
     }
 }
 
