@@ -12,7 +12,6 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 use std::time::Duration;
 use std::time::SystemTime;
-use tokio::runtime::Runtime;
 
 use crate::internal::client::conn::ConnTest;
 use crate::internal::client::conn::ConnectTestStats;
@@ -207,14 +206,17 @@ impl DownloadTest for HttpClient {
                             break;
                         }
 
-                        let result = rt.block_on(async { resp.chunk().await.unwrap() });
+                        let result = rt.block_on(async { resp.chunk().await });
                         total_cost = now.elapsed().unwrap();
 
                         match result {
-                            None => break,
-                            Some(data) => {
-                                total_data += data.len();
-                            }
+                            Ok(r) => match r {
+                                None => break,
+                                Some(data) => {
+                                    total_data += data.len();
+                                }
+                            },
+                            Err(_) => break,
                         };
                     }
 
